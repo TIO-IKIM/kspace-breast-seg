@@ -1,6 +1,7 @@
+"""Tensor conversion helpers used by the segmentation objective."""
 import torch
-import torch.nn.functional as F
 
+import torch.nn.functional as F
 
 def kspace_to_pixel_probs(y_hat_k: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
     """Convert k-space predictions to pixel-space soft class probabilities.
@@ -61,7 +62,6 @@ def kspace_to_pixel_probs(y_hat_k: torch.Tensor, eps: float = 1e-6) -> torch.Ten
         probs = probs.unsqueeze(2)
         return probs
 
-
 def mask_to_onehot_like(mask: torch.Tensor, like: torch.Tensor, num_classes: int = 2) -> torch.Tensor:
     """Convert ordinal mask to one-hot, shaped like `like`'s spatial/depth dims.
 
@@ -79,5 +79,3 @@ def mask_to_onehot_like(mask: torch.Tensor, like: torch.Tensor, num_classes: int
         oh = F.one_hot(mask.long(), num_classes=num_classes).permute(0, 4, 1, 2, 3)  # (B, C, D, H, W)
         oh = oh.unsqueeze(2)  # (B, C, 1, D, H, W)
     return oh.to(dtype=like.dtype, device=like.device)
-
-

@@ -1,21 +1,17 @@
-"""Full-dataset losses: Focal on ALL patches, Dice on positive patches only.
-
-Focal loss provides per-voxel supervision on every patch (including negatives,
-teaching the model "everything here is background").  Dice loss is applied only
-to patches with at least one foreground voxel (avoids the degenerate 0/0 case).
-"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Union, Tuple, List
-
 from monai.losses import DiceLoss, FocalLoss
-
 from src.utils.kspace_ops import kspace_to_pixel_probs, mask_to_onehot_like
 
-
 class DiceFocalDetectLossMonai(nn.Module):
-    """MONAI Focal (all patches) + Dice (positive patches only), image-space."""
+    """MONAI Focal (all patches/classes) + Dice (positive patches only).
+
+    ``include_background`` controls Dice only. Softmax focal keeps background
+    so empty patches supervise false positives and all class logits compete.
+    ``class_weights`` therefore includes the background class.
+    """
 
     requires_label_mask = True
 
@@ -41,7 +37,9 @@ class DiceFocalDetectLossMonai(nn.Module):
             reduction="mean",
         )
         self.focal_loss = FocalLoss(
-            include_background=include_background,
+            # MONAI drops excluded channels before its focal softmax. Dropping
+            # background from two logits leaves one class and zero focal loss.
+            include_background=True,
             to_onehot_y=True,
             gamma=gamma,
             weight=class_weights,
@@ -189,9 +187,16 @@ class DiceFocalDetectKspaceMSELoss(nn.Module):
                 probs[pos_mask], gt[pos_mask],
             )
 
-        if self.kspace_mse_weight > 0 and y_k is not None and pos_mask.any():
+        if self.kspace_mse_weight > 0 and pos_mask.any():
+            if y_k is None:
+                # Compute the target after the shared geometric label augmentation.
+                from src.native_spokes.physics import fft2c
+                spectrum = fft2c(label_mask[pos_mask].float())
+                target_k = torch.stack((spectrum.real, spectrum.imag), dim=1).unsqueeze(1)
+            else:
+                target_k = y_k[pos_mask]
             loss = loss + self.kspace_mse_weight * F.mse_loss(
-                y_hat_k[pos_mask].float(), y_k[pos_mask].float(), reduction="mean",
+                y_hat_k[pos_mask].float(), target_k.float(), reduction="mean",
             )
 
         return loss

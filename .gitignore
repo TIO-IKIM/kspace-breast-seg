@@ -216,3 +216,35 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated research artifacts and local configuration
+results/
+figures/
+wandb/
+archive/
+archives/
+cluster/
+analysis/
+cache/
+**/__pycache__/
+*.py[cod]
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.nii
+*.nii.gz
+*.pkl
+*.pickle
+*.drawio
+*.drawio.*
+.env.*
+.venv/
+.vscode/
+.idea/
+.cache/
+.ipynb_checkpoints/
+.DS_Store
